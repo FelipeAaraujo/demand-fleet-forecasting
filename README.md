@@ -1,42 +1,47 @@
-# Fleet & Logistics Analytics
+# Demand & Fleet Sizing Forecasting
 
-**Excel/Power Query → SQL → Power BI — identificando quais veículos da frota dão prejuízo**
+**Python (regressão com tendência + sazonalidade) — dimensionando frota sem comprar veículo à toa**
 
 ## Contexto
-A RotaViva Logística (transportadora fictícia de combustíveis) opera 60 caminhões-tanque em 4
-regiões do Brasil. A gestão "sente" que a frota está subutilizada, mas não sabe apontar quais
-veículos, especificamente, geram o problema.
+A diretoria da RotaViva não sabe se deve comprar mais caminhões, reduzir a frota ou só realocar
+veículos entre as 4 regiões de operação para o próximo trimestre.
 
 ## Problema de negócio
-Identificar veículos improdutivos, custos elevados e baixa disponibilidade — e transformar isso em
-recomendação de manutenção/realocação.
+Prever a demanda de transporte (volume em m³) por região para os próximos 3 meses e traduzir isso
+em necessidade real de frota, evitando decisão no "achismo".
 
 ## Base de dados (gerada para este projeto)
-- **21.719 viagens**, 60 veículos, 112 eventos de manutenção, 12 meses (jan–dez/2025).
-- Arquivos: `veiculos.csv`, `viagens.csv`, `manutencoes.csv`.
-- Dicionário de dados completo em `dicionario_dados.md`.
+- Série mensal de **36 meses** (jan/2023–dez/2025) por região (4 regiões), com tendência de
+  crescimento e sazonalidade distintas por região (ex.: Sul e Centro-Oeste com pico ligado a safra
+  agrícola).
+- Arquivo: `demanda_mensal_regiao.csv`.
 
-## Tratamento dos dados
-Cálculo de custo por km, custo por m³, margem por viagem e índice de disponibilidade a partir dos
-dados brutos de viagem e manutenção.
+## Modelagem (`generate_and_analyze.py`)
+- Modelo de regressão linear com **tendência (t) + sazonalidade mensal (dummies de mês)**, um
+  modelo por região.
+- **Backtest**: treino nos primeiros 30 meses, teste nos últimos 6 meses reais, validando o
+  modelo antes de confiar na previsão futura.
+- Previsão para Q1/2026 (jan–mar) a partir do modelo re-treinado com o histórico completo.
 
-## Análise
-Quais veículos têm custo por km acima da média da frota? Existe relação entre manutenção
-recorrente e baixa disponibilidade?
-
-## Resultado (calculado sobre a base gerada, não estimado)
-- **9 dos 60 veículos (15% da frota) respondem por 45,2% do custo total de manutenção** da frota,
-  com disponibilidade média de **90,4%** contra **93,8%** da frota — um gap real de 3,4 p.p.
-- Se esses 9 veículos caíssem ao custo de manutenção mediano dos demais 51, a economia estimada é
-  de **R$ 251.541,56/ano (37% do custo total de manutenção da frota)**.
-- Custo por km médio da frota: R$ 2,06.
+## Resultado (calculado sobre a base e o backtest reais)
+- **MAPE no backtest**: 0,9% (Sudeste), 1,5% (Sul), 0,9% (Nordeste), 1,4% (Centro-Oeste) — o
+  modelo captura bem o padrão de tendência e sazonalidade de cada região.
+- Traduzindo a previsão de Q1/2026 em frota necessária (capacidade média por veículo/mês):
+  - **Sudeste**: frota atual 22, necessária ~18,9 → **excesso de ~3 veículos**
+  - **Sul**: frota atual 13, necessária ~13,3 → equilibrado
+  - **Nordeste**: frota atual 14, necessária ~11,8 → **excesso de ~2 veículos**
+  - **Centro-Oeste**: frota atual 11, necessária ~11,2 → equilibrado
+- Conclusão: **não é preciso comprar veículo nenhum** para o próximo trimestre — o mesmo
+  resultado vem de realocar ~5 veículos de Sudeste/Nordeste (onde sobra capacidade) para reforçar
+  picos sazonais pontuais em Sul/Centro-Oeste, se necessário.
 
 ## Recomendação
-Priorizar manutenção preventiva ou substituição desses 9 veículos; realocar rotas mais longas para
-os veículos de maior disponibilidade.
+Plano de realocação sazonal trimestral entre regiões, revisado a cada novo backtest, em vez de
+decisão de frota fixa por calendário.
 
 ## Ferramentas
-Excel/Power Query (exploração inicial) → SQL (agregações) → Power BI (dashboard executivo).
+Python — Pandas, NumPy, Scikit-learn (regressão com variáveis de tendência e sazonalidade).
 
 ## Competências demonstradas
-Tratamento de dados, modelagem simples, SQL, DAX, storytelling executivo, KPIs operacionais.
+Modelagem de série temporal sem depender de bibliotecas especializadas, backtest antes de
+confiar em previsão, tradução de previsão estatística em decisão de capex/opex.
